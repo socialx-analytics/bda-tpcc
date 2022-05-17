@@ -1,0 +1,306 @@
+---
+title: "**Data Exploration and Visualization**"
+author: "Muhammad Apriandito"
+output:
+  html_document:
+    theme: paper
+    highlight: tango
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  dev = "png",
+  dev.args = list(type = "cairo-png"),
+  fig.height = 5,
+  fig.width = 9,
+  tidy = "styler", tidy.opts = list(strict = FALSE),
+  fig.align = "center"
+)
+options(scipen = 10000)
+set.seed(1234)
+```
+
+------------------------------------------------------------------------
+
+### **Case: Superstore Retail**
+
+Superstore is a retail company in the United States that sells a variety of office and household equipment. The superstore has an e-commerce platform where customers can order goods online through the platform.The E-commerce platform has been operating since January 2014.
+
+Every transaction that occurs on the platform is always recorded and stored in the Superstore database. The data stored in the form of purchase information, customer information, product information and so on. Detailed information about the data recorded can be seen in the following table.
+
+|      Data       | Description                                          |
+|:---------------:|:-----------------------------------------------------|
+|   `order_id`    | Unique code to distinguish each purchase transaction |
+|  `order_date`   | Order date                                           |
+|   `ship_date`   | Delivery date                                        |
+|   `ship_mode`   | Shipping method                                      |
+|  `customer_id`  | Unique code to distinguish each customer transaction |
+| `customer_name` | Customer's name                                      |
+|    `segment`    | Customer segmentation                                |
+|    `country`    | Customer country                                     |
+|     `city`      | Customer city                                        |
+|     `state`     | Customer state                                       |
+|  `postal_code`  | Customer postal code                                 |
+|    `region`     | Customer region                                      |
+|  `product_id`   | Unique code to distinguish each product              |
+|   `category`    | Product category                                     |
+|  `subcategory`  | Product subcategory                                  |
+| `product_name`  | Product name                                         |
+|     `sales`     | Total Sales                                          |
+|   `quantity`    | The quantity of goods purchased                      |
+|   `discount`    | Purchase discount                                    |
+|    `profit`     | Total profit for the company                         |
+
+Based on this data, the management wants to know how the company's performance and customer purchasing patterns.
+
+#### **Setup**
+
+To perform data visualization in R. We need to install and load R pakcage to be used.
+
+```{r eval=FALSE, include= TRUE}
+# Install packages
+install.packages("tidyverse")
+install.packages("readxl")
+install.packages("skimr")
+```
+
+```{r message=FALSE, warning=FALSE}
+# Load packages
+library("tidyverse")
+library("readxl")
+library("skimr")
+```
+
+After the required R packages are installed and loaded, we can load our data into the R environment.
+
+```{r message=FALSE, warning=FALSE}
+# Load data
+data <- read_xls("data/Superstore.xls")
+```
+
+#### **Data Exploration**
+
+```{r}
+# Show the first 6 rows of data
+head(data)
+```
+
+```{r}
+# Check Data Type
+glimpse(data)
+```
+
+```{r}
+# Descriptive Statistics
+summary(data)
+```
+
+```{r}
+# Explore Data
+skim(data)
+```
+
+#### **Data Visualization**
+
+##### **Sales**
+
+First of all, the management wants to know their sales trend. To display trend data continuously, we can visualize it use a line chart.
+
+```{r message=FALSE, warning=FALSE}
+# Visualize sales trend
+data %>%
+  select(order_date, sales) %>%
+  mutate(order_month = floor_date(order_date, "month")) %>%
+  group_by(order_month) %>%
+  mutate(monthly_sales = sum(sales)) %>%
+  ungroup() %>%
+  select(order_month, monthly_sales) %>%
+  distinct() %>%
+  ggplot(aes(x = order_month, y = monthly_sales)) +
+  geom_line() +
+  geom_smooth(method = "lm") +
+  labs(
+    title = "Sales Trend",
+    subtitle = "Superstore Company",
+    x = "",
+    y = "Sales"
+  ) +
+  theme_minimal()
+```
+
+It can be seen that the number of sales increases over time. But the management has an additional question, Is this increasing number of sales followed by an increase in profit?
+
+```{r message=FALSE, warning=FALSE}
+# Visualize sales trend
+data %>%
+  select(order_date, profit) %>%
+  mutate(order_month = floor_date(order_date, "month")) %>%
+  group_by(order_month) %>%
+  mutate(monthly_profit = sum(profit)) %>%
+  ungroup() %>%
+  select(order_month, monthly_profit) %>%
+  distinct() %>%
+  ggplot(aes(x = order_month, y = monthly_profit)) +
+  geom_line() +
+  geom_smooth(method = "lm") +
+  labs(
+    title = "Profit Trend",
+    subtitle = "Superstore Company",
+    x = "",
+    y = "Profit"
+  ) +
+  theme_minimal()
+```
+
+##### **Customer**
+
+The Management is delighted to see that their sales trend continues to increase. However, to improve Customer Relationship Management, Management wants to know the purchasing patterns of its customers. So, in the beginning, the Management wants to know which city has the highest number of sales. We can visualize it using a bar chart.
+
+```{r}
+# Visualize city with highes sales
+data %>%
+  select(sales, state) %>%
+  group_by(state) %>%
+  mutate(state_sales = sum(sales)) %>%
+  ungroup() %>%
+  select(state, state_sales) %>%
+  distinct() %>%
+  arrange(desc(state_sales)) %>%
+  slice_head(n = 5) %>%
+  ggplot(aes(x = reorder(state, -state_sales), y = state_sales, fill = state_sales)) +
+  geom_col() +
+  labs(
+    title = "Top 5 cities with the highest sales",
+    subtitle = "Superstore Company",
+    x = "",
+    y = "Sales"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+Based on the visualization above, the five states with the highest sales are California, New York, Texas, Washington, Pennsylvania. However, management has an additional question: Are the five cities' sales continuing to increase, or is it just stagnant?
+
+```{r message=FALSE, warning=FALSE}
+# Visualize sales trend by State
+data %>%
+  select(order_date, sales, state) %>%
+  filter(state == c(
+    "California",
+    "New York",
+    "Texas",
+    "Washington",
+    "Pennsylvania"
+  )) %>%
+  mutate(order_month = floor_date(order_date, "month")) %>%
+  group_by(order_month, state) %>%
+  mutate(monthly_sales = sum(sales)) %>%
+  ungroup() %>%
+  select(order_month, monthly_sales, state) %>%
+  distinct() %>%
+  ggplot(aes(x = order_month, y = monthly_sales, color = state)) +
+  geom_line() +
+  labs(
+    title = "Sales Trend by State",
+    subtitle = "Superstore Company",
+    x = "",
+    y = "Sales",
+    color = ""
+  ) +
+  theme_minimal() +
+  theme(legend.position = "top")
+```
+
+Based on the visualization, there is no trend of increasing sales in every state. However, there are several interesting patterns that can be analyzed further, one of which is why sales in Washington increased significantly in 2017.
+
+Furthermore, the management wants to know which segment has the highest sales for the company.
+
+```{r}
+# Visualize segement that has highest sales
+data %>%
+  select(sales, segment, profit) %>%
+  group_by(segment) %>%
+  mutate(sales = sum(sales)) %>%
+  ungroup() %>%
+  select(segment, sales) %>%
+  distinct() %>%
+  ggplot(aes(x = segment, y = sales, fill = sales)) +
+  geom_col() +
+  labs(
+    title = "Total Sales in Each Customer Segment",
+    subtitle = "Superstore Company",
+    x = "",
+    y = "",
+    fill = ""
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+Based on the visualization above, we can see that the segment that has the most sales is the "customer" segment. Sales data in each segmentation can be visualized over time to see whether there is an increasing trend or not.
+
+```{r}
+# Sales trend in each segement
+data %>%
+  select(order_date, sales, segment) %>%
+  mutate(order_month = floor_date(order_date, "month")) %>%
+  group_by(order_month, segment) %>%
+  mutate(monthly_sales = sum(sales)) %>%
+  ungroup() %>%
+  select(order_month, monthly_sales, segment) %>%
+  distinct() %>%
+  ggplot(aes(x = order_month, y = monthly_sales, color = segment)) +
+  geom_line() +
+  labs(
+    title = "Sales Trend in Each Customer Segment",
+    subtitle = "Superstore Company",
+    x = "",
+    y = "Sales",
+    color = ""
+  ) +
+  theme_minimal() +
+  theme(legend.position = "top")
+```
+
+The results of the visualization show that sales in each segment continue to increase every year.
+
+##### **Product**
+
+At the end, the management wants to know which product categories are sold the most and the product categories that generate the most profits. What product categories are most sold? Do the categories that sell a lot generate a lot of profit? we can use a bar chart to visualize it.
+
+```{r}
+# Visualize the most sold and the most profitable product categories
+data %>%
+  select(sales, category, profit) %>%
+  group_by(category) %>%
+  mutate(sales = sum(sales)) %>%
+  mutate(profit = sum(profit)) %>%
+  ungroup() %>%
+  select(category, profit, sales) %>%
+  distinct() %>%
+  pivot_longer(c(sales, profit), names_to = "type", values_to = "value") %>%
+  ggplot(aes(x = category, y = value, fill = type)) +
+  geom_col(position = "dodge") +
+  labs(
+    title = "Profit and Sales in each Product Category",
+    subtitle = "Superstore Company",
+    x = "",
+    y = "",
+    fill = ""
+  ) +
+  coord_flip() +
+  theme_minimal() +
+  theme(legend.position = "right")
+```
+
+It turns out that the product category that sold the most is the technology category, as well as the category that generates the most profits. However, product categories that are sold more do not necessarily produce more profit. As we can see, the furniture category sells more than the office supplies category but generates less profit.
+
+------------------------------------------------------------------------
+
+### **Post Test**
+
+Answer the questions using appropriate data visualizations and interpret the results.
+
+1.  Sales trend of each product category
+2.  Sub-category products with highest income
